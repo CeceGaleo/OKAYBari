@@ -1,0 +1,13 @@
+{
+  "name": "okay-bari",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Sito OKAY Bari con backend JSON e pannello admin protetto.",
+  "main": "backend/server.js",
+  "scripts": {
+    "start": "node backend/server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

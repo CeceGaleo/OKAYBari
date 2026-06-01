@@ -1,0 +1,5 @@
+Credenziali admin iniziali OKAY Bari
+Email: admin@okaybari.it
+Password: Okay-zOxUOJYGZlo61A
+
+Questo file viene creato solo per lo sviluppo locale. Cambia password creando un nuovo utente admin e rimuovi questo file prima di pubblicare.

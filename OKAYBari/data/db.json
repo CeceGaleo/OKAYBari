@@ -1,0 +1,48 @@
+{
+  "meta": {
+    "version": 1,
+    "created_at": "2026-05-31T21:48:37.923Z",
+    "updated_at": "2026-05-31T22:04:50.011Z"
+  },
+  "users": [
+    {
+      "id": "a765afd2-e82e-4b98-87f9-609191451a3b",
+      "email": "admin@okaybari.it",
+      "password_hash": "scrypt$oJ2Oot5Hkzj_Mc6MlJj6Hw$vZqz_ZZIdReO7274zMOCkzWtTntGUXw20oUtGTVA1_l3eoc5xgY_A6_q-Tl9696nXvrocAUUydyidttqF5Gg2A",
+      "role": "admin",
+      "created_at": "2026-05-31T21:48:37.953Z",
+      "updated_at": "2026-05-31T21:48:37.953Z",
+      "last_login_at": "2026-05-31T21:55:37.093Z"
+    }
+  ],
+  "reservations": [],
+  "logs": [
+    {
+      "id": "282df0c8-c1d7-44f6-aa9c-dc3599435489",
+      "user_id": "a765afd2-e82e-4b98-87f9-609191451a3b",
+      "user_email": "admin@okaybari.it",
+      "action": "DELETE_RESERVATION",
+      "reservation_id": "00a01e60-a09d-4104-85b2-4d0fc23ee033",
+      "details": "Galileo Ceglie",
+      "created_at": "2026-05-31T22:04:50.011Z"
+    },
+    {
+      "id": "9149c7cf-d453-4918-ba40-3cffc7c2f98b",
+      "user_id": "",
+      "user_email": "system",
+      "action": "CREATE_RESERVATION",
+      "reservation_id": "00a01e60-a09d-4104-85b2-4d0fc23ee033",
+      "details": "Galileo Ceglie",
+      "created_at": "2026-05-31T21:56:05.702Z"
+    },
+    {
+      "id": "0889892c-d376-46c6-affa-ea583efc362b",
+      "user_id": "a765afd2-e82e-4b98-87f9-609191451a3b",
+      "user_email": "admin@okaybari.it",
+      "action": "LOGIN",
+      "reservation_id": "",
+      "details": "Accesso al pannello",
+      "created_at": "2026-05-31T21:55:37.093Z"
+    }
+  ]
+}

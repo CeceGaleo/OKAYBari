@@ -1,0 +1,926 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OKAY Admin — Gestione Prenotazioni</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0c0c0c; --surface: #141414; --surface2: #1c1c1c; --surface3: #242424;
+      --accent: #FF5200; --accent2: #FFB400;
+      --text: #F0EAE0; --muted: #666; --muted2: #888;
+      --green: #22c55e; --red: #ef4444; --yellow: #f59e0b; --blue: #3b82f6;
+      --border: rgba(255,255,255,0.07);
+      --font-d: 'Bebas Neue', sans-serif;
+      --font: 'DM Sans', sans-serif;
+    }
+    *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+    html, body { height:100%; }
+    body { font-family:var(--font); background:var(--bg); color:var(--text); -webkit-font-smoothing:antialiased; }
+
+    /* ---- LOGIN ---- */
+    #login-screen {
+      position:fixed; inset:0; display:flex; align-items:center; justify-content:center;
+      background:var(--bg); z-index:1000;
+    }
+    .login-box {
+      width:100%; max-width:400px; padding:50px 40px;
+      background:var(--surface); border:1px solid rgba(255,82,0,0.15);
+    }
+    .login-logo { font-family:var(--font-d); font-size:3rem; color:var(--accent); letter-spacing:6px; margin-bottom:6px; }
+    .login-sub { font-size:0.72rem; letter-spacing:4px; text-transform:uppercase; color:var(--muted); margin-bottom:40px; }
+    .form-group { margin-bottom:20px; }
+    .form-group label { display:block; font-size:0.72rem; letter-spacing:2px; text-transform:uppercase; color:var(--muted2); margin-bottom:8px; }
+    .form-group input {
+      width:100%; padding:13px 16px; background:var(--bg);
+      border:1px solid var(--border); color:var(--text);
+      font-family:var(--font); font-size:0.95rem;
+      transition:border-color 0.2s; outline:none;
+    }
+    .form-group input:focus { border-color:var(--accent); }
+    .btn {
+      width:100%; padding:14px; background:var(--accent); color:#000;
+      border:none; font-family:var(--font); font-size:0.82rem; font-weight:700;
+      letter-spacing:2px; text-transform:uppercase; cursor:pointer;
+      clip-path:polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,10px 100%,0 calc(100% - 10px));
+      transition:background 0.2s;
+    }
+    .btn:hover { background:var(--accent2); }
+    .btn:disabled { background:var(--surface3); color:var(--muted); cursor:not-allowed; }
+    .login-error { color:var(--red); font-size:0.82rem; margin-top:12px; text-align:center; min-height:20px; }
+
+    /* ---- LAYOUT ---- */
+    #app { display:none; height:100vh; overflow:hidden; flex-direction:column; }
+    #app.visible { display:flex; }
+
+    /* TOP BAR */
+    .topbar {
+      height:56px; background:var(--surface); border-bottom:1px solid var(--border);
+      display:flex; align-items:center; justify-content:space-between;
+      padding:0 24px; flex-shrink:0;
+    }
+    .topbar-left { display:flex; align-items:center; gap:16px; }
+    .topbar-logo { font-family:var(--font-d); font-size:1.6rem; color:var(--accent); letter-spacing:4px; }
+    .topbar-title { font-size:0.75rem; letter-spacing:2px; text-transform:uppercase; color:var(--muted); }
+    .topbar-right { display:flex; align-items:center; gap:16px; }
+    .user-badge {
+      font-size:0.72rem; letter-spacing:1px; color:var(--muted2);
+    }
+    .user-badge span { color:var(--accent); font-weight:700; }
+    .logout-btn {
+      padding:7px 16px; background:none; border:1px solid var(--border); color:var(--muted);
+      font-size:0.7rem; letter-spacing:1.5px; text-transform:uppercase; cursor:pointer;
+      transition:all 0.2s;
+    }
+    .logout-btn:hover { border-color:var(--red); color:var(--red); }
+
+    /* MAIN */
+    .main { display:flex; flex:1; overflow:hidden; }
+
+    /* SIDEBAR */
+    .sidebar {
+      width:220px; background:var(--surface); border-right:1px solid var(--border);
+      padding:24px 0; display:flex; flex-direction:column; gap:4px; flex-shrink:0;
+    }
+    .nav-item {
+      padding:12px 24px; font-size:0.78rem; letter-spacing:1.5px; text-transform:uppercase;
+      color:var(--muted); cursor:pointer; transition:all 0.2s; border-left:2px solid transparent;
+    }
+    .nav-item:hover { color:var(--text); background:rgba(255,255,255,0.03); }
+    .nav-item.active { color:var(--accent); border-left-color:var(--accent); background:rgba(255,82,0,0.05); }
+    .nav-section { padding:16px 24px 8px; font-size:0.62rem; letter-spacing:3px; text-transform:uppercase; color:var(--muted); opacity:0.5; }
+
+    /* CONTENT */
+    .content { flex:1; overflow-y:auto; padding:28px; }
+
+    /* ---- STATS CARDS ---- */
+    .stats-row { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:28px; }
+    .stat-card {
+      background:var(--surface); border:1px solid var(--border); padding:22px;
+      position:relative; overflow:hidden;
+    }
+    .stat-card::after {
+      content:attr(data-icon); position:absolute; right:12px; bottom:-8px;
+      font-size:3.5rem; opacity:0.07; pointer-events:none;
+    }
+    .stat-label { font-size:0.65rem; letter-spacing:3px; text-transform:uppercase; color:var(--muted); margin-bottom:8px; }
+    .stat-value { font-family:var(--font-d); font-size:2.8rem; line-height:1; }
+    .stat-value.orange { color:var(--accent); }
+    .stat-value.green  { color:var(--green); }
+    .stat-value.yellow { color:var(--yellow); }
+    .stat-value.red    { color:var(--red); }
+
+    /* ---- FILTERS ---- */
+    .filters-bar {
+      display:flex; gap:10px; margin-bottom:20px; flex-wrap:wrap; align-items:center;
+    }
+    .filter-input, .filter-select {
+      padding:9px 14px; background:var(--surface); border:1px solid var(--border);
+      color:var(--text); font-family:var(--font); font-size:0.82rem; outline:none;
+      transition:border-color 0.2s;
+    }
+    .filter-input:focus, .filter-select:focus { border-color:var(--accent); }
+    .filter-input::placeholder { color:var(--muted); }
+    .filter-select option { background:var(--surface); }
+    .filter-btn {
+      padding:9px 20px; background:var(--accent); color:#000; border:none;
+      font-size:0.75rem; font-weight:700; letter-spacing:1.5px; text-transform:uppercase;
+      cursor:pointer; transition:background 0.2s;
+    }
+    .filter-btn:hover { background:var(--accent2); }
+    .filter-btn.reset { background:var(--surface2); color:var(--muted); border:1px solid var(--border); }
+    .filter-btn.reset:hover { background:var(--surface3); color:var(--text); }
+
+    /* ---- TABLE ---- */
+    .table-wrap { background:var(--surface); border:1px solid var(--border); overflow-x:auto; }
+    table { width:100%; border-collapse:collapse; min-width:800px; }
+    th {
+      padding:12px 16px; text-align:left; font-size:0.65rem; letter-spacing:2.5px;
+      text-transform:uppercase; color:var(--muted); border-bottom:1px solid var(--border);
+      background:var(--surface2); font-weight:500; white-space:nowrap;
+    }
+    td {
+      padding:13px 16px; font-size:0.85rem; border-bottom:1px solid rgba(255,255,255,0.04);
+      vertical-align:middle;
+    }
+    tr:last-child td { border-bottom:none; }
+    tr:hover td { background:rgba(255,255,255,0.02); }
+
+    .badge {
+      display:inline-block; padding:4px 10px; font-size:0.65rem; font-weight:700;
+      letter-spacing:1.5px; text-transform:uppercase; border-radius:2px;
+    }
+    .badge.pending   { background:rgba(245,158,11,0.15); color:var(--yellow); }
+    .badge.confirmed { background:rgba(34,197,94,0.15);  color:var(--green); }
+    .badge.cancelled { background:rgba(239,68,68,0.15);  color:var(--red); }
+
+    .action-btn {
+      padding:5px 12px; background:none; border:1px solid var(--border);
+      color:var(--muted); font-size:0.7rem; cursor:pointer; transition:all 0.2s;
+      margin-right:4px;
+    }
+    .action-btn:hover         { border-color:var(--accent); color:var(--accent); }
+    .action-btn.confirm:hover { border-color:var(--green);  color:var(--green); }
+    .action-btn.cancel:hover  { border-color:var(--yellow); color:var(--yellow); }
+    .action-btn.delete:hover  { border-color:var(--red);    color:var(--red); }
+
+    /* ---- PAGINATION ---- */
+    .pagination { display:flex; gap:6px; align-items:center; margin-top:16px; justify-content:flex-end; }
+    .page-btn {
+      width:34px; height:34px; background:var(--surface); border:1px solid var(--border);
+      color:var(--muted); font-size:0.8rem; cursor:pointer; transition:all 0.2s;
+      display:flex; align-items:center; justify-content:center;
+    }
+    .page-btn:hover, .page-btn.active { border-color:var(--accent); color:var(--accent); }
+    .page-info { font-size:0.75rem; color:var(--muted); padding:0 8px; }
+
+    /* ---- MODAL ---- */
+    .modal-bg {
+      position:fixed; inset:0; background:rgba(0,0,0,0.85); z-index:500;
+      display:none; align-items:center; justify-content:center; padding:20px;
+    }
+    .modal-bg.open { display:flex; }
+    .modal {
+      background:var(--surface); border:1px solid rgba(255,82,0,0.2);
+      width:100%; max-width:580px; max-height:90vh; overflow-y:auto;
+    }
+    .modal-header {
+      padding:20px 24px; border-bottom:1px solid var(--border);
+      display:flex; justify-content:space-between; align-items:center;
+    }
+    .modal-title { font-family:var(--font-d); font-size:1.6rem; letter-spacing:2px; }
+    .modal-close {
+      width:32px; height:32px; background:none; border:1px solid var(--border);
+      color:var(--muted); font-size:1.2rem; cursor:pointer; transition:all 0.2s;
+    }
+    .modal-close:hover { border-color:var(--red); color:var(--red); }
+    .modal-body { padding:24px; }
+    .modal-body .form-group input,
+    .modal-body .form-group select,
+    .modal-body .form-group textarea {
+      width:100%; padding:11px 14px; background:var(--bg); border:1px solid var(--border);
+      color:var(--text); font-family:var(--font); font-size:0.9rem; outline:none;
+      transition:border-color 0.2s;
+    }
+    .modal-body .form-group input:focus,
+    .modal-body .form-group select:focus,
+    .modal-body .form-group textarea:focus { border-color:var(--accent); }
+    .modal-body .form-group select option { background:var(--surface); }
+    .modal-body .form-group textarea { resize:vertical; min-height:80px; }
+    .modal-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+    .modal-footer { padding:16px 24px; border-top:1px solid var(--border); display:flex; gap:10px; justify-content:flex-end; }
+    .btn-sm {
+      padding:10px 22px; border:none; font-family:var(--font); font-size:0.78rem;
+      font-weight:700; letter-spacing:1.5px; text-transform:uppercase; cursor:pointer;
+      transition:all 0.2s;
+    }
+    .btn-sm.primary { background:var(--accent); color:#000; }
+    .btn-sm.primary:hover { background:var(--accent2); }
+    .btn-sm.secondary { background:var(--surface2); color:var(--muted); border:1px solid var(--border); }
+    .btn-sm.secondary:hover { color:var(--text); }
+    .btn-sm.danger { background:rgba(239,68,68,0.15); color:var(--red); border:1px solid rgba(239,68,68,0.3); }
+    .btn-sm.danger:hover { background:var(--red); color:#fff; }
+
+    /* Detail rows */
+    .detail-row { display:flex; gap:16px; margin-bottom:12px; }
+    .detail-field { flex:1; }
+    .detail-field label { display:block; font-size:0.65rem; letter-spacing:2px; text-transform:uppercase; color:var(--muted); margin-bottom:4px; }
+    .detail-field .val { font-size:0.9rem; }
+
+    /* ---- TOAST ---- */
+    #toast-container { position:fixed; bottom:24px; right:24px; display:flex; flex-direction:column; gap:8px; z-index:9999; }
+    .toast {
+      padding:13px 20px; font-size:0.82rem; min-width:260px;
+      border-left:3px solid var(--green); background:var(--surface2);
+      animation:slideIn 0.3s ease;
+    }
+    .toast.error { border-left-color:var(--red); }
+    .toast.warn  { border-left-color:var(--yellow); }
+    @keyframes slideIn { from { opacity:0; transform:translateX(20px); } to { opacity:1; transform:translateX(0); } }
+
+    /* ---- EMPTY STATE ---- */
+    .empty-state { padding:60px; text-align:center; color:var(--muted); }
+    .empty-state .icon { font-size:3rem; margin-bottom:16px; opacity:0.3; }
+    .empty-state p { font-size:0.85rem; }
+
+    /* ---- LOADING ---- */
+    .loading { padding:40px; text-align:center; color:var(--muted); font-size:0.85rem; }
+
+    /* ---- LOG TABLE ---- */
+    .log-action { font-size:0.72rem; letter-spacing:1px; color:var(--accent2); }
+
+    /* ---- SUMMARY ---- */
+    .summary-date-bar { display:flex; align-items:center; gap:12px; margin-bottom:24px; }
+    .slot-row {
+      display:grid; grid-template-columns:80px 1fr 80px 80px 80px; gap:12px;
+      align-items:center; padding:12px 16px; background:var(--surface);
+      border:1px solid var(--border); margin-bottom:4px;
+    }
+    .slot-time { font-family:var(--font-d); font-size:1.3rem; color:var(--accent); }
+    .slot-bar { background:var(--surface2); height:8px; position:relative; }
+    .slot-fill { background:var(--accent); height:100%; transition:width 0.4s; }
+    .slot-count { font-size:0.82rem; text-align:center; }
+    .slot-count.green { color:var(--green); }
+    .slot-count.red   { color:var(--red); }
+
+    @media(max-width:768px) {
+      .stats-row { grid-template-columns:1fr 1fr; }
+      .sidebar { display:none; }
+      .modal-grid { grid-template-columns:1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ==================== LOGIN ==================== -->
+<div id="login-screen">
+  <div class="login-box">
+    <div class="login-logo">OKAY</div>
+    <div class="login-sub">Admin Panel</div>
+    <div class="form-group">
+      <label>Email</label>
+      <input type="email" id="login-email" placeholder="admin@okaybari.it" autocomplete="username">
+    </div>
+    <div class="form-group">
+      <label>Password</label>
+      <input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password">
+    </div>
+    <button class="btn" id="login-btn" onclick="doLogin()">Accedi</button>
+    <div class="login-error" id="login-error"></div>
+  </div>
+</div>
+
+<!-- ==================== APP ==================== -->
+<div id="app">
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <div class="topbar-left">
+      <div class="topbar-logo">OKAY</div>
+      <div class="topbar-title">Pannello Admin</div>
+    </div>
+    <div class="topbar-right">
+      <div class="user-badge">Connesso come <span id="user-email-display">—</span></div>
+      <button class="logout-btn" onclick="logout()">Esci</button>
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main">
+    <!-- SIDEBAR -->
+    <div class="sidebar">
+      <div class="nav-section">Menu</div>
+      <div class="nav-item active" data-page="reservations" onclick="showPage('reservations',this)">📅 Prenotazioni</div>
+      <div class="nav-item" data-page="summary" onclick="showPage('summary',this)">📊 Riepilogo Giorno</div>
+      <div class="nav-section">Admin</div>
+      <div class="nav-item" data-page="logs" onclick="showPage('logs',this)">📝 Log Attività</div>
+      <div class="nav-item" data-page="users" onclick="showPage('users',this)">👤 Utenti</div>
+    </div>
+
+    <!-- CONTENT -->
+    <div class="content" id="content">
+      <!-- Contenuto dinamico -->
+    </div>
+  </div>
+</div>
+
+<!-- ==================== MODAL ==================== -->
+<div class="modal-bg" id="modal-bg" onclick="closeModalOnBg(event)">
+  <div class="modal" id="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-title">Dettaglio</div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body" id="modal-body"></div>
+    <div class="modal-footer" id="modal-footer"></div>
+  </div>
+</div>
+
+<!-- ==================== TOAST ==================== -->
+<div id="toast-container"></div>
+
+<script>
+// =====================================================
+// CONFIG — cambia l'URL se il backend gira su altra porta
+// =====================================================
+const API_URL = 'http://localhost:5500/api';
+
+// =====================================================
+// STATE
+// =====================================================
+let token    = localStorage.getItem('okayToken') || null;
+let userInfo = JSON.parse(localStorage.getItem('okayUser') || 'null');
+let currentPage = 'reservations';
+let resvFilters = { date:'', status:'', search:'', page:1 };
+
+// =====================================================
+// BOOT
+// =====================================================
+window.addEventListener('DOMContentLoaded', () => {
+  if (token && userInfo) {
+    showApp();
+    showPage('reservations', document.querySelector('[data-page="reservations"]'));
+  }
+  document.getElementById('login-password').addEventListener('keydown', e => {
+    if (e.key === 'Enter') doLogin();
+  });
+});
+
+// =====================================================
+// AUTH
+// =====================================================
+async function doLogin() {
+  const email    = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value;
+  const errEl    = document.getElementById('login-error');
+  const btn      = document.getElementById('login-btn');
+
+  if (!email || !password) { errEl.textContent = 'Inserisci email e password'; return; }
+
+  btn.disabled = true; btn.textContent = 'Accesso…';
+  errEl.textContent = '';
+
+  try {
+    const res  = await fetch(`${API_URL}/admin/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    });
+    const data = await res.json();
+
+    if (!res.ok) throw new Error(data.error?.message || 'Errore login');
+
+    token    = data.data.token;
+    userInfo = data.data.user;
+    localStorage.setItem('okayToken',  token);
+    localStorage.setItem('okayUser',   JSON.stringify(userInfo));
+
+    showApp();
+    showPage('reservations', document.querySelector('[data-page="reservations"]'));
+  } catch (err) {
+    errEl.textContent = err.message;
+  } finally {
+    btn.disabled = false; btn.textContent = 'Accedi';
+  }
+}
+
+function logout() {
+  token = null; userInfo = null;
+  localStorage.removeItem('okayToken');
+  localStorage.removeItem('okayUser');
+  document.getElementById('app').classList.remove('visible');
+  document.getElementById('login-screen').style.display = 'flex';
+}
+
+function showApp() {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app').classList.add('visible');
+  if (userInfo) document.getElementById('user-email-display').textContent = userInfo.email;
+
+  // Nascondi voci admin solo per staff
+  if (userInfo?.role !== 'admin') {
+    document.querySelectorAll('[data-page="logs"],[data-page="users"]').forEach(el => {
+      el.style.opacity = '0.35'; el.style.pointerEvents = 'none';
+    });
+  }
+}
+
+// =====================================================
+// API HELPER
+// =====================================================
+async function api(path, method = 'GET', body = null) {
+  const opts = {
+    method,
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+  };
+  if (body) opts.body = JSON.stringify(body);
+
+  const res  = await fetch(`${API_URL}${path}`, opts);
+  const data = await res.json();
+
+  if (res.status === 401) { logout(); return null; }
+  if (!res.ok) throw new Error(data.error?.message || 'Errore API');
+  return data;
+}
+
+// =====================================================
+// PAGES
+// =====================================================
+function showPage(page, el) {
+  currentPage = page;
+  document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+  if (el) el.classList.add('active');
+  const content = document.getElementById('content');
+  content.innerHTML = '<div class="loading">Caricamento…</div>';
+
+  switch (page) {
+    case 'reservations': renderReservations(); break;
+    case 'summary':      renderSummary();      break;
+    case 'logs':         renderLogs();         break;
+    case 'users':        renderUsers();        break;
+  }
+}
+
+// =====================================================
+// PAGE: RESERVATIONS
+// =====================================================
+async function renderReservations() {
+  const c = document.getElementById('content');
+
+  // Carica stats + lista
+  let summary, resData;
+  try {
+    const todayStr = new Date().toISOString().slice(0,10);
+    [summary, resData] = await Promise.all([
+      api(`/admin/summary?date=${todayStr}`),
+      loadReservations(),
+    ]);
+  } catch(err) {
+    c.innerHTML = `<div class="empty-state"><div class="icon">⚠️</div><p>${err.message}</p></div>`;
+    return;
+  }
+
+  const s = summary?.data?.totals || {};
+
+  c.innerHTML = `
+    <div class="stats-row">
+      <div class="stat-card" data-icon="📅">
+        <div class="stat-label">Oggi — Totale</div>
+        <div class="stat-value orange">${s.total || 0}</div>
+      </div>
+      <div class="stat-card" data-icon="✅">
+        <div class="stat-label">Confermate</div>
+        <div class="stat-value green">${s.confirmed || 0}</div>
+      </div>
+      <div class="stat-card" data-icon="⏳">
+        <div class="stat-label">In Attesa</div>
+        <div class="stat-value yellow">${s.pending || 0}</div>
+      </div>
+      <div class="stat-card" data-icon="👥">
+        <div class="stat-label">Coperti Oggi</div>
+        <div class="stat-value">${s.total_people || 0}</div>
+      </div>
+    </div>
+
+    <div class="filters-bar">
+      <input class="filter-input" type="date" id="f-date" placeholder="Data" value="${resvFilters.date}"
+        onchange="resvFilters.date=this.value;resvFilters.page=1;loadAndRenderTable()">
+      <select class="filter-select" id="f-status" onchange="resvFilters.status=this.value;resvFilters.page=1;loadAndRenderTable()">
+        <option value="">Tutti gli stati</option>
+        <option value="pending"   ${resvFilters.status==='pending'   ?'selected':''}>⏳ In attesa</option>
+        <option value="confirmed" ${resvFilters.status==='confirmed' ?'selected':''}>✅ Confermata</option>
+        <option value="cancelled" ${resvFilters.status==='cancelled' ?'selected':''}>❌ Cancellata</option>
+      </select>
+      <input class="filter-input" type="text" id="f-search" placeholder="🔍 Cerca nome, telefono…"
+        value="${resvFilters.search}"
+        oninput="resvFilters.search=this.value;resvFilters.page=1;loadAndRenderTable()">
+      <button class="filter-btn reset" onclick="resetFilters()">✕ Reset</button>
+    </div>
+
+    <div id="table-area"></div>
+  `;
+
+  renderTable(resData);
+}
+
+async function loadReservations() {
+  const p = new URLSearchParams();
+  if (resvFilters.date)   p.set('date',   resvFilters.date);
+  if (resvFilters.status) p.set('status', resvFilters.status);
+  if (resvFilters.search) p.set('search', resvFilters.search);
+  p.set('page',  resvFilters.page);
+  p.set('limit', 20);
+  return api(`/admin/reservations?${p}`);
+}
+
+async function loadAndRenderTable() {
+  document.getElementById('table-area').innerHTML = '<div class="loading">Caricamento…</div>';
+  try {
+    const data = await loadReservations();
+    renderTable(data);
+  } catch(err) {
+    document.getElementById('table-area').innerHTML = `<div class="empty-state"><p>${err.message}</p></div>`;
+  }
+}
+
+function renderTable(data) {
+  const area = document.getElementById('table-area');
+  if (!area) return;
+
+  const rows = data?.data || [];
+  const pag  = data?.pagination || {};
+
+  if (!rows.length) {
+    area.innerHTML = '<div class="empty-state"><div class="icon">📭</div><p>Nessuna prenotazione trovata</p></div>';
+    return;
+  }
+
+  const tbody = rows.map(r => `
+    <tr>
+      <td style="color:var(--muted);font-size:0.72rem">${r.id.slice(0,8).toUpperCase()}</td>
+      <td><strong>${r.name}</strong>${r.surname ? ' '+r.surname : ''}</td>
+      <td>${r.phone}</td>
+      <td style="color:var(--accent);font-family:var(--font-d);font-size:1rem">${r.date}</td>
+      <td style="color:var(--accent2)">${r.time}</td>
+      <td>${r.people_count} pers.</td>
+      <td><span class="badge ${r.status}">${statusLabel(r.status)}</span></td>
+      <td>
+        <button class="action-btn" onclick="openDetail('${r.id}')">Dettagli</button>
+        ${r.status !== 'confirmed' ? `<button class="action-btn confirm" onclick="quickStatus('${r.id}','confirmed')">✓ Conferma</button>` : ''}
+        ${r.status !== 'cancelled' ? `<button class="action-btn cancel"  onclick="quickStatus('${r.id}','cancelled')">✕ Cancella</button>` : ''}
+        <button class="action-btn delete" onclick="confirmDelete('${r.id}','${r.name}')">🗑</button>
+      </td>
+    </tr>
+  `).join('');
+
+  let pages = '';
+  if (pag.pages > 1) {
+    for (let i=1; i<=pag.pages; i++) {
+      pages += `<button class="page-btn ${i===pag.page?'active':''}" onclick="resvFilters.page=${i};loadAndRenderTable()">${i}</button>`;
+    }
+  }
+
+  area.innerHTML = `
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th><th>Cliente</th><th>Telefono</th>
+            <th>Data</th><th>Ora</th><th>Persone</th><th>Stato</th><th>Azioni</th>
+          </tr>
+        </thead>
+        <tbody>${tbody}</tbody>
+      </table>
+    </div>
+    ${pag.pages > 1 ? `<div class="pagination">
+      <span class="page-info">${pag.total} prenotazioni · pagina ${pag.page}/${pag.pages}</span>
+      ${pages}
+    </div>` : `<div style="margin-top:12px;font-size:0.75rem;color:var(--muted)">${pag.total} prenotazione${pag.total!==1?'i':''}</div>`}
+  `;
+}
+
+function resetFilters() {
+  resvFilters = { date:'', status:'', search:'', page:1 };
+  showPage('reservations', document.querySelector('[data-page="reservations"]'));
+}
+
+// =====================================================
+// QUICK STATUS UPDATE
+// =====================================================
+async function quickStatus(id, status) {
+  try {
+    await api(`/admin/reservations/${id}`, 'PUT', { status });
+    toast(`Stato aggiornato: ${statusLabel(status)}`);
+    loadAndRenderTable();
+  } catch(err) {
+    toast(err.message, 'error');
+  }
+}
+
+async function confirmDelete(id, name) {
+  openModal('Elimina Prenotazione', `
+    <p style="color:var(--muted);line-height:1.8">
+      Stai per eliminare la prenotazione di <strong>${name}</strong>.<br>
+      Questa azione non è reversibile.
+    </p>
+  `, [
+    { label:'Annulla', cls:'secondary', action:'closeModal()' },
+    { label:'Elimina', cls:'danger',    action:`deleteReservation('${id}')` },
+  ]);
+}
+
+async function deleteReservation(id) {
+  closeModal();
+  try {
+    await api(`/admin/reservations/${id}`, 'DELETE');
+    toast('Prenotazione eliminata');
+    loadAndRenderTable();
+  } catch(err) {
+    toast(err.message, 'error');
+  }
+}
+
+// =====================================================
+// DETAIL MODAL
+// =====================================================
+async function openDetail(id) {
+  openModal('Caricamento…', '<div class="loading">…</div>', []);
+  try {
+    const data = await api(`/admin/reservations/${id}`);
+    const r    = data.data;
+
+    document.getElementById('modal-title').textContent = `#${r.id.slice(0,8).toUpperCase()}`;
+    document.getElementById('modal-body').innerHTML = `
+      <div class="detail-row">
+        <div class="detail-field"><label>Nome</label><div class="val">${r.name} ${r.surname||''}</div></div>
+        <div class="detail-field"><label>Stato</label><span class="badge ${r.status}">${statusLabel(r.status)}</span></div>
+      </div>
+      <div class="detail-row">
+        <div class="detail-field"><label>Telefono</label><div class="val">${r.phone}</div></div>
+        <div class="detail-field"><label>Email</label><div class="val">${r.email||'—'}</div></div>
+      </div>
+      <div class="detail-row">
+        <div class="detail-field"><label>Data</label><div class="val" style="color:var(--accent);font-family:var(--font-d);font-size:1.2rem">${r.date}</div></div>
+        <div class="detail-field"><label>Ora</label><div class="val" style="color:var(--accent2);font-family:var(--font-d);font-size:1.2rem">${r.time}</div></div>
+        <div class="detail-field"><label>Persone</label><div class="val">${r.people_count}</div></div>
+      </div>
+      ${r.notes ? `<div class="form-group" style="margin-top:12px"><label>Note cliente</label><div class="val" style="background:var(--bg);padding:10px;font-size:0.85rem;color:var(--muted2)">${r.notes}</div></div>` : ''}
+      <div class="form-group" style="margin-top:16px">
+        <label>Stato prenotazione</label>
+        <select id="edit-status">
+          <option value="pending"   ${r.status==='pending'  ?'selected':''}>⏳ In attesa</option>
+          <option value="confirmed" ${r.status==='confirmed'?'selected':''}>✅ Confermata</option>
+          <option value="cancelled" ${r.status==='cancelled'?'selected':''}>❌ Cancellata</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Note interne (solo staff)</label>
+        <textarea id="edit-notes">${r.internal_notes||''}</textarea>
+      </div>
+      <div style="font-size:0.7rem;color:var(--muted);margin-top:8px">
+        Creata: ${new Date(r.created_at).toLocaleString('it-IT')} · 
+        Aggiornata: ${new Date(r.updated_at).toLocaleString('it-IT')}
+      </div>
+    `;
+    document.getElementById('modal-footer').innerHTML = `
+      <button class="btn-sm secondary" onclick="closeModal()">Chiudi</button>
+      <button class="btn-sm danger"    onclick="confirmDelete('${r.id}','${r.name}')">Elimina</button>
+      <button class="btn-sm primary"   onclick="saveDetail('${r.id}')">Salva modifiche</button>
+    `;
+  } catch(err) {
+    toast(err.message, 'error'); closeModal();
+  }
+}
+
+async function saveDetail(id) {
+  const status = document.getElementById('edit-status')?.value;
+  const notes  = document.getElementById('edit-notes')?.value;
+  try {
+    await api(`/admin/reservations/${id}`, 'PUT', { status, internal_notes: notes });
+    toast('Prenotazione aggiornata ✓');
+    closeModal();
+    loadAndRenderTable();
+  } catch(err) {
+    toast(err.message, 'error');
+  }
+}
+
+// =====================================================
+// PAGE: SUMMARY
+// =====================================================
+async function renderSummary() {
+  const c   = document.getElementById('content');
+  const today = new Date().toISOString().slice(0,10);
+
+  c.innerHTML = `
+    <div class="summary-date-bar">
+      <span style="font-size:0.72rem;letter-spacing:2px;text-transform:uppercase;color:var(--muted)">Data:</span>
+      <input class="filter-input" type="date" id="sum-date" value="${today}"
+        onchange="loadSummary(this.value)">
+    </div>
+    <div id="sum-content"><div class="loading">Caricamento…</div></div>
+  `;
+
+  loadSummary(today);
+}
+
+async function loadSummary(date) {
+  const el = document.getElementById('sum-content');
+  try {
+    const data = await api(`/admin/summary?date=${date}`);
+    const d    = data.data;
+    const t    = d.totals;
+    const maxP = 8; // max per slot
+
+    const slots = d.by_time.map(s => {
+      const pct = Math.round((s.total / maxP) * 100);
+      const full = s.total >= maxP;
+      return `
+        <div class="slot-row">
+          <div class="slot-time">${s.time}</div>
+          <div>
+            <div class="slot-bar"><div class="slot-fill" style="width:${Math.min(pct,100)}%;background:${full?'var(--red)':'var(--accent)'}"></div></div>
+          </div>
+          <div class="slot-count ${full?'red':''}" title="totale">${s.total}/${maxP}</div>
+          <div class="slot-count green" title="confermati">✅ ${s.confirmed}</div>
+          <div class="slot-count" title="coperti">👥 ${s.total_people||0}</div>
+        </div>
+      `;
+    }).join('') || '<div class="empty-state"><div class="icon">📭</div><p>Nessuna prenotazione per questa data</p></div>';
+
+    el.innerHTML = `
+      <div class="stats-row" style="margin-bottom:24px">
+        <div class="stat-card" data-icon="📅"><div class="stat-label">Totale</div><div class="stat-value orange">${t.total}</div></div>
+        <div class="stat-card" data-icon="✅"><div class="stat-label">Confermate</div><div class="stat-value green">${t.confirmed}</div></div>
+        <div class="stat-card" data-icon="⏳"><div class="stat-label">In attesa</div><div class="stat-value yellow">${t.pending}</div></div>
+        <div class="stat-card" data-icon="👥"><div class="stat-label">Coperti</div><div class="stat-value">${t.total_people||0}</div></div>
+      </div>
+      <div style="font-size:0.65rem;letter-spacing:3px;text-transform:uppercase;color:var(--muted);margin-bottom:12px">Fasce orarie</div>
+      ${slots}
+    `;
+  } catch(err) {
+    el.innerHTML = `<div class="empty-state"><p>${err.message}</p></div>`;
+  }
+}
+
+// =====================================================
+// PAGE: LOGS
+// =====================================================
+async function renderLogs() {
+  const c = document.getElementById('content');
+  try {
+    const data = await api('/admin/logs');
+    const logs = data.data;
+    if (!logs.length) {
+      c.innerHTML = '<div class="empty-state"><div class="icon">📭</div><p>Nessun log disponibile</p></div>';
+      return;
+    }
+    const rows = logs.map(l => `
+      <tr>
+        <td style="color:var(--muted);font-size:0.72rem">${new Date(l.created_at).toLocaleString('it-IT')}</td>
+        <td style="color:var(--muted2)">${l.user_email}</td>
+        <td><span class="log-action">${l.action}</span></td>
+        <td style="font-size:0.72rem;color:var(--muted)">${l.reservation_id ? l.reservation_id.slice(0,8).toUpperCase() : '—'}</td>
+        <td style="font-size:0.8rem;color:var(--muted2)">${l.details || '—'}</td>
+      </tr>
+    `).join('');
+    c.innerHTML = `
+      <div style="margin-bottom:20px">
+        <div style="font-family:var(--font-d);font-size:2.5rem;letter-spacing:2px">Log Attività</div>
+        <div style="font-size:0.75rem;color:var(--muted);margin-top:4px">Ultime ${logs.length} azioni</div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Data/Ora</th><th>Utente</th><th>Azione</th><th>ID Prenotazione</th><th>Dettagli</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    `;
+  } catch(err) {
+    c.innerHTML = `<div class="empty-state"><p>${err.message}</p></div>`;
+  }
+}
+
+// =====================================================
+// PAGE: USERS
+// =====================================================
+async function renderUsers() {
+  const c = document.getElementById('content');
+  try {
+    const data  = await api('/admin/users');
+    const users = data.data;
+    const rows  = users.map(u => `
+      <tr>
+        <td style="color:var(--muted);font-size:0.72rem">${u.id.slice(0,8)}</td>
+        <td><strong>${u.email}</strong></td>
+        <td><span class="badge ${u.role==='admin'?'confirmed':'pending'}">${u.role}</span></td>
+        <td style="color:var(--muted);font-size:0.78rem">${new Date(u.created_at).toLocaleDateString('it-IT')}</td>
+      </tr>
+    `).join('');
+
+    c.innerHTML = `
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px">
+        <div>
+          <div style="font-family:var(--font-d);font-size:2.5rem;letter-spacing:2px">Utenti</div>
+          <div style="font-size:0.75rem;color:var(--muted)">${users.length} utenti registrati</div>
+        </div>
+        <button class="filter-btn" onclick="openNewUser()">+ Nuovo utente</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>ID</th><th>Email</th><th>Ruolo</th><th>Creato</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    `;
+  } catch(err) {
+    c.innerHTML = `<div class="empty-state"><p>${err.message}</p></div>`;
+  }
+}
+
+function openNewUser() {
+  openModal('Nuovo Utente', `
+    <div class="modal-grid">
+      <div class="form-group" style="grid-column:1/-1">
+        <label>Email</label>
+        <input type="email" id="nu-email" placeholder="staff@okaybari.it">
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" id="nu-pass" placeholder="Min 8 caratteri, 1 maiuscola, 1 numero">
+      </div>
+      <div class="form-group">
+        <label>Ruolo</label>
+        <select id="nu-role">
+          <option value="staff">Staff (visualizza/modifica)</option>
+          <option value="admin">Admin (accesso completo)</option>
+        </select>
+      </div>
+    </div>
+    <div id="nu-err" style="color:var(--red);font-size:0.82rem;margin-top:8px"></div>
+  `, [
+    { label:'Annulla', cls:'secondary', action:'closeModal()' },
+    { label:'Crea utente', cls:'primary', action:'createUser()' },
+  ]);
+}
+
+async function createUser() {
+  const email = document.getElementById('nu-email')?.value?.trim();
+  const pass  = document.getElementById('nu-pass')?.value;
+  const role  = document.getElementById('nu-role')?.value;
+  const errEl = document.getElementById('nu-err');
+
+  if (!email || !pass) { errEl.textContent = 'Compila tutti i campi'; return; }
+
+  try {
+    await api('/admin/users', 'POST', { email, password: pass, role });
+    toast('Utente creato ✓');
+    closeModal();
+    renderUsers();
+  } catch(err) {
+    errEl.textContent = err.message;
+  }
+}
+
+// =====================================================
+// MODAL HELPERS
+// =====================================================
+function openModal(title, body, buttons) {
+  document.getElementById('modal-title').textContent = title;
+  document.getElementById('modal-body').innerHTML    = body;
+  document.getElementById('modal-footer').innerHTML  = buttons.map(b =>
+    `<button class="btn-sm ${b.cls}" onclick="${b.action}">${b.label}</button>`
+  ).join('');
+  document.getElementById('modal-bg').classList.add('open');
+}
+
+function closeModal() {
+  document.getElementById('modal-bg').classList.remove('open');
+}
+
+function closeModalOnBg(e) {
+  if (e.target === document.getElementById('modal-bg')) closeModal();
+}
+
+// =====================================================
+// TOAST
+// =====================================================
+function toast(msg, type = 'success') {
+  const c = document.getElementById('toast-container');
+  const t = document.createElement('div');
+  t.className = `toast ${type==='error'?'error':type==='warn'?'warn':''}`;
+  t.textContent = msg;
+  c.appendChild(t);
+  setTimeout(() => t.remove(), 3500);
+}
+
+// =====================================================
+// UTILS
+// =====================================================
+function statusLabel(s) {
+  return { pending:'In attesa', confirmed:'Confermata', cancelled:'Cancellata' }[s] || s;
+}
+</script>
+</body>
+</html>
