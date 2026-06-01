@@ -87,6 +87,8 @@ function setupAdminEvents() {
     if (adminAction === 'save-detail') saveDetail(id);
     if (adminAction === 'new-user') openNewUser();
     if (adminAction === 'create-user') createUser();
+    if (adminAction === 'reset-password') openPasswordModal(id, actionEl.dataset.email || '');
+    if (adminAction === 'save-password') updateUserPassword(id);
     if (adminAction === 'reset-filters') resetFilters();
     if (adminAction === 'page') {
       resvFilters.page = Number(page) || 1;
@@ -566,14 +568,21 @@ async function renderUsers() {
   try {
     const data  = await api('/admin/users');
     const users = data.data;
-    const rows  = users.map(u => `
-      <tr>
-        <td style="color:var(--muted);font-size:0.72rem">${escapeHtml(String(u.id || '').slice(0,8))}</td>
-        <td><strong>${escapeHtml(u.email)}</strong></td>
-        <td><span class="badge ${u.role==='admin'?'confirmed':'pending'}">${escapeHtml(u.role)}</span></td>
-        <td style="color:var(--muted);font-size:0.78rem">${formatDateTime(u.created_at)}</td>
-      </tr>
-    `).join('');
+    const rows  = users.map(u => {
+      const id = String(u.id || '');
+      const email = String(u.email || '');
+      return `
+        <tr>
+          <td style="color:var(--muted);font-size:0.72rem">${escapeHtml(id.slice(0,8))}</td>
+          <td><strong>${escapeHtml(email)}</strong></td>
+          <td><span class="badge ${u.role==='admin'?'confirmed':'pending'}">${escapeHtml(u.role)}</span></td>
+          <td style="color:var(--muted);font-size:0.78rem">${formatDateTime(u.created_at)}</td>
+          <td>
+            <button class="action-btn" data-admin-action="reset-password" data-id="${escapeHtml(id)}" data-email="${escapeHtml(email)}">Password</button>
+          </td>
+        </tr>
+      `;
+    }).join('');
 
     c.innerHTML = `
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px">
@@ -585,7 +594,7 @@ async function renderUsers() {
       </div>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>ID</th><th>Email</th><th>Ruolo</th><th>Creato</th></tr></thead>
+          <thead><tr><th>ID</th><th>Email</th><th>Ruolo</th><th>Creato</th><th>Azioni</th></tr></thead>
           <tbody>${rows}</tbody>
         </table>
       </div>
@@ -632,6 +641,53 @@ async function createUser() {
   try {
     await api('/admin/users', 'POST', { email, password: pass, role });
     toast('Utente creato ✓');
+    closeModal();
+    renderUsers();
+  } catch(err) {
+    errEl.textContent = err.message;
+  }
+}
+
+function openPasswordModal(id, email) {
+  openModal('Cambia Password', `
+    <div class="modal-grid">
+      <div class="form-group" style="grid-column:1/-1">
+        <label>Account</label>
+        <input type="email" value="${escapeHtml(email)}" disabled>
+      </div>
+      <div class="form-group">
+        <label>Nuova password</label>
+        <input type="password" id="rp-pass" placeholder="Min 8 caratteri, 1 maiuscola, 1 numero" autocomplete="new-password">
+      </div>
+      <div class="form-group">
+        <label>Conferma password</label>
+        <input type="password" id="rp-pass2" placeholder="Ripeti password" autocomplete="new-password">
+      </div>
+    </div>
+    <div id="rp-err" style="color:var(--red);font-size:0.82rem;margin-top:8px"></div>
+  `, [
+    { label:'Annulla', cls:'secondary', attrs:'data-modal-action="close"' },
+    { label:'Aggiorna password', cls:'primary', attrs:`data-admin-action="save-password" data-id="${escapeHtml(id)}"` },
+  ]);
+}
+
+async function updateUserPassword(id) {
+  const pass = document.getElementById('rp-pass')?.value || '';
+  const pass2 = document.getElementById('rp-pass2')?.value || '';
+  const errEl = document.getElementById('rp-err');
+
+  if (!pass || !pass2) {
+    errEl.textContent = 'Compila entrambi i campi password';
+    return;
+  }
+  if (pass !== pass2) {
+    errEl.textContent = 'Le password non coincidono';
+    return;
+  }
+
+  try {
+    await api(`/admin/users/${id}/password`, 'PUT', { password: pass });
+    toast('Password aggiornata');
     closeModal();
     renderUsers();
   } catch(err) {

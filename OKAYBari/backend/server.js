@@ -10,6 +10,7 @@ const {
   AppError,
   validateEmail,
   validateNewUser,
+  validatePassword,
   validateReservationInput,
   validateReservationUpdate,
 } = require('./validation');
@@ -414,6 +415,23 @@ route('POST', '/api/admin/users', async (ctx, res) => {
   });
 
   created(res, user);
+});
+
+route('PUT', '/api/admin/users/:id/password', async (ctx, res) => {
+  const actor = await requireUser(ctx.req, ['admin']);
+  const password = validatePassword(ctx.body.password);
+
+  const user = await store.update(async (db) => {
+    const target = db.users.find((item) => item.id === ctx.params.id);
+    if (!target) throw new AppError(404, 'Utente non trovato', 'NOT_FOUND');
+
+    target.password_hash = await hashPassword(password);
+    target.updated_at = new Date().toISOString();
+    addLog(db, actor, 'UPDATE_USER_PASSWORD', '', target.email);
+    return publicUser(target);
+  });
+
+  ok(res, user);
 });
 
 function mimeType(filePath) {
