@@ -1,0 +1,4 @@
+data/db.json
+data/.jwt-secret
+data/first-admin.txt
+*.tmp
